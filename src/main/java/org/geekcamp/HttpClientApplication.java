@@ -19,7 +19,7 @@ public class HttpClientApplication {
     }
 
 
-    public static <T extends Http> Http build(String filePath, HttpType httpType) throws Exception {
+    public static Http build(String filePath, HttpType httpType) throws Exception {
 
         // Class<HttpClientApplication> clazz = HttpClientApplication.class;
         // InputStream inputStream = clazz.getResourceAsStream("/request.txt");
@@ -72,6 +72,7 @@ public class HttpClientApplication {
                     httpResponse.setMessage(s);
                 }
             }
+
             index++;
         }
         if (httpType == HttpType.REQUEST) {
