@@ -1,4 +1,4 @@
-POST /api/login HTTP/1.1
+POST /api/login?user=test_user&password=123456 HTTP/1.1
 Host: localhost
 Connection: keep-alive
 Pragma: no-cache
@@ -13,7 +13,6 @@ Sec-Fetch-Dest: document
 Accept-Encoding: gzip, deflate, br
 Accept-Language: zh-CN,zh;q=0.9,en;q=0.8
 Cookie: _ga=GA1.1.1616329349.1613726491
+Auth:   fsdfosuoufdsfsdfsf9u
 
-username=foo&&password=123456
-
-type=1
+username=foo&&password=123456type=1

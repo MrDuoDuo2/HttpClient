@@ -1,22 +1,29 @@
-package main.java.org.geekcamp;
+package org.geekcamp;
 
-import java.io.*;
+import org.geekcamp.http.client.Http;
+import org.geekcamp.http.client.HttpRequest;
+import org.geekcamp.http.client.HttpResponse;
+import org.geekcamp.http.client.HttpType;
+
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 public class HttpClientApplication {
-    enum startLineElement {
-        HttpMethod,
-        HttpUri,
-        HttpVersion
+    public static void main(String[] args) throws Exception {
+        HttpRequest httpRequest = (HttpRequest) build("src/main/resources/request.txt",HttpType.REQUEST);
+        System.out.println(httpRequest.getBody());
     }
 
-    public static void main(String[] args) throws IOException {
-        final String filename = "src/main/resources/request.txt";
+
+    public static <T extends Http> Http build(String filePath, HttpType httpType) throws Exception {
+
         // Class<HttpClientApplication> clazz = HttpClientApplication.class;
         // InputStream inputStream = clazz.getResourceAsStream("/request.txt");
-        final String requestStream = Files.readString(Path.of(filename));
+        final String requestStream = Files.readString(Path.of(filePath));
 
         final int bodyIndex = requestStream.indexOf("\r\n\r\n");
         final String body = requestStream.substring(bodyIndex + 4);
@@ -28,43 +35,101 @@ public class HttpClientApplication {
         final int headersEndIndex = bodyIndex;
         final String headers = requestStream.substring(headersBeginIndex, headersEndIndex);
 
-        HashMap<startLineElement, String> startLineMap = new HashMap<>();
-        startLineParse(startLine, 0, startLineMap);
+        HttpRequest httpRequest = null;
+        HttpResponse httpResponse = null;
+        if (httpType == HttpType.REQUEST) {
+            httpRequest = new HttpRequest();
+        } else if (httpType == HttpType.RESPONSE) {
+            httpResponse = new HttpResponse();
+        }
+        LinkedList<String> stringLinkedList = new LinkedList<>();
+        startLineParse(startLine, stringLinkedList);
+        int index = 0;
+        for (String s : stringLinkedList) {
+            if (index == 0) {
+                if (httpType == HttpType.REQUEST) {
+                    httpRequest.setMethod(s);
+                } else if (httpType == HttpType.RESPONSE) {
+                    httpResponse.setHttpVersion(s);
+                }
+            }
+            if (index == 1) {
+                if (httpType == HttpType.REQUEST) {
+                    int uriEndIndex = s.indexOf("?");
+                    String uri =s.substring(0,uriEndIndex);
+                    httpRequest.setUri(uri);
+                    String params = s.substring(uriEndIndex+1);
+                    uriParse(params,httpRequest);
 
-        HashMap<String, String> headerMap = new HashMap<>();
-        httpParse(headers, headerMap);
+                } else if (httpType == HttpType.RESPONSE) {
+                    httpResponse.setStatusCode(Integer.valueOf(s));
+                }
+            }
+            if (index == 2) {
+                if (httpType == HttpType.REQUEST) {
+                    httpRequest.setHttpVersion(s);
+                } else if (httpType == HttpType.RESPONSE) {
+                    httpResponse.setMessage(s);
+                }
+            }
+            index++;
+        }
+        if (httpType == HttpType.REQUEST) {
+            httpParse(headers, httpRequest);
+            ByteBuffer byteBuffer = ByteBuffer.wrap(body.getBytes(StandardCharsets.UTF_8));
+            httpRequest.setRawData(byteBuffer);
+            return httpRequest;
+        } else if (httpType == HttpType.RESPONSE) {
+            httpParse(headers, httpResponse);
+            ByteBuffer byteBuffer = ByteBuffer.wrap(body.getBytes(StandardCharsets.UTF_8));
+            httpResponse.setRawData(byteBuffer);
+            return httpResponse;
+        }
 
-        HttpMessage httpMessage = new HttpMessage();
-        httpMessage.setStartLine(startLineMap);
-        httpMessage.setHeader(headerMap);
-        httpMessage.setBody(body);
-
-        System.out.println(httpMessage.startLine.get(startLineElement.HttpMethod));
-        System.out.println(httpMessage.header.get("Host"));
-        System.out.println(httpMessage.body);
+        return null;
     }
 
-    public static void startLineParse(String startLine, int index, HashMap<startLineElement, String> startLineMap) {
-        startLineElement element = startLineElement.values()[index];
+    public static void uriParse(String uri, HttpRequest httpRequest){
+        int keyEndIndex = uri.indexOf("=");
+        int keyBeginIndex = 0;
+        String key = uri.substring(keyBeginIndex,keyEndIndex);
 
+        int valueEndIndex = uri.indexOf("&");
+        int valueBeginIndex = keyEndIndex+1;
+
+
+        if (valueEndIndex == -1){
+            String value = uri.substring(valueBeginIndex);
+            httpRequest.addParameter(key,value);
+        }else {
+            String value = uri.substring(valueBeginIndex, valueEndIndex);
+            httpRequest.addParameter(key, value);
+            String lastParams = uri.substring(valueEndIndex + 1);
+            uriParse(lastParams, httpRequest);
+        }
+
+    }
+
+    public static LinkedList<String> startLineParse(String startLine, LinkedList<String> startLineLinkedList) throws Exception {
         int startLineElementEndIndex = startLine.indexOf(" ");
         int startLineElementBeginIndex = 0;
 
+        String startLineElement;
         if (startLineElementEndIndex == -1) {
-            String httpMethod = startLine.substring(startLineElementBeginIndex);
-            startLineMap.put(element, httpMethod);
+            startLineElement = startLine.substring(startLineElementBeginIndex);
+            startLineLinkedList.add(startLineElement);
+            return startLineLinkedList;
         } else {
-            String httpMethod = startLine.substring(startLineElementBeginIndex, startLineElementEndIndex);
-            startLineMap.put(element, httpMethod);
-
+            startLineElement = startLine.substring(startLineElementBeginIndex, startLineElementEndIndex);
+            startLineLinkedList.add(startLineElement);
             startLineElementBeginIndex = startLineElementEndIndex + 1;
             String lastStartLine = startLine.substring(startLineElementBeginIndex);
-            index++;
-            startLineParse(lastStartLine, index, startLineMap);
+            startLineParse(lastStartLine, startLineLinkedList);
+            return startLineLinkedList;
         }
     }
 
-    public static void httpParse(String headers, HashMap<String, String> headerMap) {
+    public static void httpParse(String headers, Http http) {
         int headersBeginIndex = 0;
         int headersEndIndex = headers.indexOf("\r\n");
 
@@ -76,7 +141,7 @@ public class HttpClientApplication {
             String key = header.substring(0, keyIndex);
             String value = header.substring(keyIndex + 2);
 
-            headerMap.put(key, value);
+            http.addHeader(key, value);
         } else {
             header = headers.substring(headersBeginIndex, headersEndIndex);
 
@@ -84,12 +149,12 @@ public class HttpClientApplication {
             String key = header.substring(0, keyIndex);
             String value = header.substring(keyIndex + 2);
 
-            headerMap.put(key, value);
+            http.addHeader(key, value);
 
             headersBeginIndex = headersEndIndex + 2;
             String lastHeader = headers.substring(headersBeginIndex);
 
-            httpParse(lastHeader, headerMap);
+            httpParse(lastHeader, http);
         }
     }
 }
