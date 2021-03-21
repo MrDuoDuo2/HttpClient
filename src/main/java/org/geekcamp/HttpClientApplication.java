@@ -56,10 +56,14 @@ public class HttpClientApplication {
             if (index == 1) {
                 if (httpType == HttpType.REQUEST) {
                     int uriEndIndex = s.indexOf("?");
+                    if(uriEndIndex == -1){
+                        httpRequest.setUri(s);
+                    }else {
                     String uri =s.substring(0,uriEndIndex);
                     httpRequest.setUri(uri);
                     String params = s.substring(uriEndIndex+1);
                     uriParse(params,httpRequest);
+                    }
 
                 } else if (httpType == HttpType.RESPONSE) {
                     httpResponse.setStatusCode(Integer.valueOf(s));
