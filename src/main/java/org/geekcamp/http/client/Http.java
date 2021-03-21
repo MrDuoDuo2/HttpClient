@@ -1,51 +1,37 @@
 package org.geekcamp.http.client;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
+import org.geekcamp.http.client.header.Header;
+
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class Http {
     private String httpVersion;
-    private final Map<String, String> headers = new HashMap<>();
-    private ByteBuffer rawData;
-    private List<Byte> rawData2;
+    private final Map<String, Header> headers = new HashMap<>();
+    private String body;
 
     public String getHttpVersion() {
         return httpVersion;
     }
 
-    public Map<String, String> getHeaders() {
+    public Map<String, Header> getHeaders() {
         return headers;
     }
 
-    public ByteBuffer getRawData() {
-        return rawData;
-    }
-
-    public List<Byte> getRawData2() {
-        return rawData2;
-    }
 
     public void setHttpVersion(String v) {
         this.httpVersion = v;
     }
 
-    public void addHeader(String name, String value) {
-        this.headers.put(name, value);
+    public void addHeader(String name, Header header) {
+        this.headers.put(name, header);
     }
 
     public String getBody() {
-        return new String(this.rawData.array(), StandardCharsets.UTF_8);
+        return body;
     }
 
-
-    public void setRawData(ByteBuffer v) {
-        this.rawData = v;
-    }
-
-    public void setRawData2(List<Byte> v) {
-        this.rawData2 = v;
+    public void setBody(String body) {
+        this.body = body;
     }
 }
