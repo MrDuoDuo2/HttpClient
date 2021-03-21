@@ -1,4 +1,4 @@
-POST /api/login?user=test_user&password=123456 HTTP/1.1
+POST /api/login HTTP/1.1
 Host: localhost
 Connection: keep-alive
 Pragma: no-cache
